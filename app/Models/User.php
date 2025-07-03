@@ -6,13 +6,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-
-class User extends Authenticatable
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts;
+use Filament\Panel;
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
+    /**@
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -52,4 +54,9 @@ class User extends Authenticatable
         {
             return $this->hasMany(Order::class);
         }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->email == 'arevalocarmencintya@gmail.com';
+    }
 }

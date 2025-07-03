@@ -16,7 +16,7 @@ class OrderStats extends BaseWidget
             Stat::make('nuevo pedido', Order::query()->where('estado_pedido', 'nuevo')->count()),
             Stat::make('pedido procesado', Order::query()->where('estado_pedido', 'procesado')->count()),
             Stat::make('pedido enviado', Order::query()->where('estado_pedido', 'enviado')->count()),
-            stat::make('precio Promedio', Number::currency(Order::query()->avg('total_general')), 'sol')
+            stat::make('precio Promedio', Number::currency(Order::query()->avg('total_general')?? 0, 'sol')),
           
         ];
     }

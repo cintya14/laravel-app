@@ -30,4 +30,6 @@ public function items(){
 public function direccion(){
     return $this->hasOne(Direccion::class);    
 }
+
+
 }

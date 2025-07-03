@@ -25,6 +25,8 @@ class MarcaResource extends Resource
     protected static ?string $model = Marca::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
+        protected static ?string $recordTitleAttribute = 'nombre';
+        protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
@@ -50,7 +52,7 @@ class MarcaResource extends Resource
 
                     FileUpload::make('imagen')
                             ->image()
-                            ->directory('categorias')
+                            ->directory('marcas')
                             ->disk('public'),
                     
                     Toggle::make('activo')
