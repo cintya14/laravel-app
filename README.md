@@ -22,3 +22,4 @@ Aplicación web para la gestión de productos, ventas, usuarios y reportes de un
 5. Levantar el servidor con `php artisan serve`.
 
 ---
+# Deploy Thu, Dec  4, 2025  7:52:28 AM
