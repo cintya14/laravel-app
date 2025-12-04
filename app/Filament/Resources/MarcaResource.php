@@ -17,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -88,16 +89,37 @@ class MarcaResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\ActionGroup::make([
+                ->actions([
+                    Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])
+
+                  Tables\Actions\DeleteAction::make()
+                ->requiresConfirmation()
+                ->failureNotificationTitle('No se puede eliminar: la marca tiene productos asociados.')
+                ->before(function (Tables\Actions\DeleteAction $action): void {
+                    /** @var \App\Models\Marca|null $record */
+                    $record = $action->getRecord();
+                    if (! $record) {
+                        return;
+                    }
+
+                    if ($record->productos()->exists()) {
+                        // dispara el toast rojo “oficial”
+                        $action->failure();
+
+                        // cancela la acción (no intenta borrar)
+                        $action->halt();
+                    }
+                }),
+                ]),
             ])
+
+        
+
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                //Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -2,34 +2,29 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
-use Filament\Models\Contracts;
 use Filament\Panel;
+
 class User extends Authenticatable implements FilamentUser
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /**@
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
+    /**
+     * Atributos asignables en masa.
      */
     protected $fillable = [
         'name',
         'email',
         'email_verified_at',
         'password',
+        'is_admin',           // <- importante
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
+     * Atributos ocultos.
      */
     protected $hidden = [
         'password',
@@ -37,26 +32,32 @@ class User extends Authenticatable implements FilamentUser
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Casts.
      */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',   // <- importante
         ];
-
-        
     }
-    public function orders()
-        {
-            return $this->hasMany(Order::class);
-        }
 
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    // Agrega esto en tu modelo User.php
+    public function addresses() {
+        return $this->hasMany(UserAddress::class);
+    }
+
+    /**
+     * Filament: ¿puede acceder al panel?
+     */
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->email == 'arevalocarmencintya@gmail.com';
+        return $this->is_admin === true;   // <- regla única y clara
     }
 }

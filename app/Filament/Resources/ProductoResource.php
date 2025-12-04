@@ -7,8 +7,10 @@ use App\Filament\Resources\ProductoResource\RelationManagers;
 use App\Models\Producto;
 use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -23,6 +25,9 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Notifications\Notification;
+
+
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use PHPUnit\Framework\Reorderable;
@@ -74,9 +79,17 @@ class ProductoResource extends Resource
                 Group::make()->schema([
                     Section::make('Precio')->schema([
                        TextInput::make('precio')
-                            ->numeric()
-                            ->required()
-                            ->prefix('sol'),
+                                ->label('Precio')
+                                ->numeric()
+                                ->minValue(0)                 // ⬅️ no permite < 0 (validación)
+                                ->step(0.01)                  // input number con 2 decimales
+                                ->required()
+                                ->prefix('S/ ')
+                                ->rules(['numeric', 'gte:0'])
+                                ->validationMessages([
+                                'gte' => 'El precio no puede ser negativo.',
+                                'numeric' => 'El precio debe ser numérico.',
+                            ])
       
                     ]),
                      
@@ -96,22 +109,58 @@ class ProductoResource extends Resource
                             ->relationship('marca', 'nombre'),
                     ]),
 
-                    Section::make('estado')->schema([
-                        Toggle::make('en_estock')
-                        ->required()
-                        ->default(true),
+                    Section::make('Estado y Stock')->schema([
+                        Toggle::make('en_stock')
+                            ->label('¿En stock?')
+                            ->required()
+                            ->default(true)
+                            ->reactive(),
 
                         Toggle::make('activo')
-                        ->required()
-                        ->default(true),
+                            ->label('Activo')
+                            ->required()
+                            ->default(true),
 
                         Toggle::make('destacado')
-                        ->required(),
+                            ->label('Destacado')
+                            ->required(),
 
                         Toggle::make('en_venta')
-                        ->required()
-                                          
-                        ])
+                            ->label('En venta')
+                            ->required(),
+                        
+                        
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('stock_disponible')
+                                    ->label('Stock Disponible')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->minValue(0)
+                                    ->required()
+                                    ->step(1)
+                                    ->helperText('Unidades en inventario')
+                                    ->visible(fn ($get) => $get('en_stock') == true),
+                                
+                                TextInput::make('stock_minimo')
+                                    ->label('Stock Mínimo')
+                                    ->numeric()
+                                    ->default(5)
+                                    ->minValue(0)
+                                    ->required()
+                                    ->step(1)
+                                    ->helperText('Alerta cuando baje a este nivel')
+                                    ->visible(fn ($get) => $get('en_stock') == true),
+                                
+                                Placeholder::make('stock_reservado')
+                                    ->label('Stock Reservado')
+                                    ->content(function ($record) {
+                                        return $record ? $record->stock_reservado : 0;
+                                    })
+                                    ->helperText('Reservado en carritos')
+                                    ->visible(fn ($get) => $get('en_stock') == true),
+                            ])
+                    ])
                     
                 ])->columnSpan(1)
             ])->columns(3);
@@ -129,6 +178,40 @@ class ProductoResource extends Resource
                     ->sortable(),
                 TextColumn::make('precio')
                     ->money('sol')
+                    ->sortable(),
+                TextColumn::make('stock_disponible')
+                    ->label('Stock')
+                    ->numeric()
+                    ->sortable()
+                    ->color(function ($record) {
+                        if ($record->stock_disponible <= 0) return 'danger';
+                        if ($record->stock_disponible <= $record->stock_minimo) return 'warning';
+                        return 'success';
+                    }),
+                    
+                TextColumn::make('stock_reservado')
+                    ->label('Reservado')
+                    ->numeric()
+                    ->sortable(),
+                    
+                TextColumn::make('stock_minimo')
+                    ->label('Mínimo')
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                    
+                TextColumn::make('stock_real')
+                    ->label('Stock Real')
+                    ->state(function ($record) {
+                        return $record->stock_disponible - $record->stock_reservado;
+                    })
+                    ->numeric()
+                    ->color(function ($record) {
+                        $stockReal = $record->stock_disponible - $record->stock_reservado;
+                        if ($stockReal <= 0) return 'danger';
+                        if ($stockReal <= $record->stock_minimo) return 'warning';
+                        return 'success';
+                    })
                     ->sortable(),
                 IconColumn::make('activo')
                     ->boolean(),
@@ -158,13 +241,31 @@ class ProductoResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                    
+                  Tables\Actions\DeleteAction::make()
+                    ->before(function (Tables\Actions\DeleteAction $action): void {
+                        /** @var \App\Models\Producto|null $record */
+                        $record = $action->getRecord(); // obtenemos el registro desde la acción
+                        if (! $record) {
+                            return;
+                        }
 
-                ]),
-            ])
+                        // Si el producto tiene ventas asociadas, NO permitir borrar
+                        if ($record->orderItems()->exists()) {
+                            $action->halt();
+
+                            Notification::make()
+                                ->title('No se puede eliminar')
+                                ->body('El producto tiene ventas asociadas y no puede eliminarse.')
+                                ->danger()
+                                ->send();
+                             }
+            }),
+    ]),
+])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                //Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

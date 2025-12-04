@@ -2,7 +2,7 @@
 <div>
     <div class="w-full h-screen bg-gradient-to-r from-blue-200 to-blue-100 py-10 px-4 sm:px-6 lg:px-8 mx-auto">
   <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- Grid -->
+    
     <div class="grid md:grid-cols-2 gap-4 md:gap-8 xl:gap-20 md:items-center">
       <div>
         <h1 class="block text-3xl font-bold text-gray-800 sm:text-4xl lg:text-6xl lg:leading-tight dark:text-white">Comienza tu compra <span class="text-blue-600">CBRICENHO</span></h1>

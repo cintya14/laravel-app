@@ -9,6 +9,8 @@ use Livewire\Attributes\Url;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Payment\PaymentClient; // Cambiado a PaymentClient
 use Livewire\Component;
+use App\Helpers\GestionarCarrito;
+
 
 #[Title('Success Page')]
 class SuccessPage extends Component
@@ -26,13 +28,23 @@ class SuccessPage extends Component
             ->where('id', $order_id)
             ->first();
             
-        // Solo procesar si tenemos payment_id y el pago aún está pendiente
         if (!$this->order) {
             return redirect()->route('home');
         }
 
+        // Limpiar carrito solo si el pago fue completado
+        if ($this->order->estado_pago === 'completado') {
+            GestionarCarrito::clearCartItems();
+        }
+        
+        // Si el pago está pendiente y hay payment_id, verificar
         if ($this->payment_id && $this->order->estado_pago == 'pendiente') {
             $this->verifyPayment();
+            
+            // Si después de verificar está completado, limpiar carrito
+            if ($this->order->fresh()->estado_pago === 'completado') {
+                GestionarCarrito::clearCartItems();
+            }
         }
     }
 
