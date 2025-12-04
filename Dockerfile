@@ -1,8 +1,6 @@
 FROM php:8.2-fpm
 
-# -------------------------
-# Dependencias de sistema
-# -------------------------
+# Extensiones y herramientas necesarias
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,64 +10,48 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libicu-dev \
     zip \
-    unzip \
-    nginx \
-    supervisor \
-    gnupg
+    unzip
 
-# Node.js 18 (para compilar Vite)
+# Node.js 18 para Vite
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs
 
-# -------------------------
 # Extensiones PHP
-# -------------------------
-RUN docker-php-ext-configure intl
-RUN docker-php-ext-install \
-    pdo_mysql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    gd \
-    intl \
-    zip
+RUN docker-php-ext-configure intl \
+    && docker-php-ext-install \
+        pdo_mysql \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        intl \
+        zip
 
 # Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
-# Usuario
-RUN useradd -G www-data,root -u 1000 -d /home/laravel laravel
+# Directorio de trabajo
+WORKDIR /app
 
-WORKDIR /var/www
+# Copiar proyecto
+COPY . .
 
-# Copiar todo el proyecto
-COPY . /var/www
-
-# Instalar dependencias PHP
+# Dependencias PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# -------------------------
-# Construir assets con Vite
-# -------------------------
-RUN npm ci
-RUN npm run build
+# Construcción Vite
+RUN npm ci && npm run build
 
-# Permisos
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 775 storage \
+# Permisos (Render sí permite estas rutas)
+RUN chmod -R 775 storage \
     && chmod -R 775 bootstrap/cache \
     && chmod -R 755 public
 
-# -------------------------
-# Nginx y Supervisor
-# -------------------------
-COPY docker/nginx.conf /etc/nginx/sites-available/default
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Puerto asignado por Render
+ENV PORT=10000
 
-EXPOSE 8080
+EXPOSE 10000
 
-COPY docker/start.sh /start.sh
-RUN chmod +x /start.sh
-
-CMD ["/start.sh"]
+# Comando de ejecución
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=10000"]
