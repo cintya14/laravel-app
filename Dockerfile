@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema incluyendo Node.js
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 # Limpiar caché
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Instalar extensiones de PHP necesarias para Laravel y Filament
+# Instalar extensiones de PHP necesarias
 RUN docker-php-ext-configure intl
 RUN docker-php-ext-install \
     pdo_mysql \
@@ -45,6 +45,14 @@ WORKDIR /var/www
 # Copiar archivos de la aplicación
 COPY --chown=laravel:laravel . /var/www
 
+# Instalar dependencias de Node y compilar assets
+RUN echo "=== Instalando dependencias de Node ===" && \
+    npm ci && \
+    echo "=== Compilando assets con Vite ===" && \
+    npm run build && \
+    echo "=== Build completado ===" && \
+    ls -la public/build/
+
 # Instalar dependencias de PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
@@ -52,8 +60,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 RUN chown -R www-data:www-data /var/www
 RUN chmod -R 775 /var/www/storage
 RUN chmod -R 775 /var/www/bootstrap/cache
-RUN touch /var/www/storage/logs/laravel.log
-RUN chmod 775 /var/www/storage/logs/laravel.log
+RUN chmod -R 755 /var/www/public
+
 # Configurar Nginx
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 
