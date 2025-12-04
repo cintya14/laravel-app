@@ -1,15 +1,13 @@
 services:
   - type: web
-    name: laravel-app-render
+    name: sistema-ventas-online
     runtime: php
-    repo: https://github.com/cintya14/laravel-app.git
-    branch: main
     buildCommand: |
       composer install --no-dev --optimize-autoloader
       php artisan key:generate --force
       php artisan storage:link
       php artisan optimize:clear
-    startCommand: php artisan serve --host=0.0.0.0 --port=8000
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
     envVars:
       - key: APP_ENV
         value: production
