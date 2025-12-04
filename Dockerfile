@@ -47,9 +47,11 @@ COPY --chown=laravel:laravel . /var/www
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Configurar permisos
-RUN chown -R laravel:www-data /var/www
-RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
-
+RUN chown -R www-data:www-data /var/www
+RUN chmod -R 775 /var/www/storage
+RUN chmod -R 775 /var/www/bootstrap/cache
+RUN touch /var/www/storage/logs/laravel.log
+RUN chmod 775 /var/www/storage/logs/laravel.log
 # Configurar Nginx
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 
