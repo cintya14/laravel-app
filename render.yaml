@@ -3,35 +3,17 @@ services:
     name: sistema-ventas-online
     env: php
     buildCommand: |
-      # 1. Instalar PHP dependencies
       composer install --no-dev --optimize-autoloader
-      
-      # 2. Instalar Node.js dependencies
       npm ci --only=production
-      
-      # 3. Construir assets de Vite
       npm run build
-      
-      # 4. Cache de Laravel
       php artisan config:cache
       php artisan route:cache
       php artisan view:cache
-      
-      # 5. Storage link
       php artisan storage:link
-    startCommand: php artisan serve --host=0.0.0.0 --port=10000
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
         value: false
-      - key: LOG_CHANNEL
-        value: stderr
-      - key: SESSION_DRIVER
-        value: database
-      - key: CACHE_STORE
-        value: database
-      - key: FILESYSTEM_DISK
-        value: public
     healthCheckPath: /
-    autoDeploy: true
