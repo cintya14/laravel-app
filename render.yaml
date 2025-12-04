@@ -1,8 +1,25 @@
 services:
   - type: web
     name: sistema-ventas-online
-    env: docker
-    dockerfilePath: ./Dockerfile
+    env: php
+    buildCommand: |
+      # 1. Instalar PHP dependencies
+      composer install --no-dev --optimize-autoloader
+      
+      # 2. Instalar Node.js dependencies
+      npm ci --only=production
+      
+      # 3. Construir assets de Vite
+      npm run build
+      
+      # 4. Cache de Laravel
+      php artisan config:cache
+      php artisan route:cache
+      php artisan view:cache
+      
+      # 5. Storage link
+      php artisan storage:link
+    startCommand: php artisan serve --host=0.0.0.0 --port=10000
     envVars:
       - key: APP_ENV
         value: production
@@ -14,12 +31,7 @@ services:
         value: database
       - key: CACHE_STORE
         value: database
-      - key: QUEUE_CONNECTION
-        value: database
-      - key: FILESYSTEaM_DISK
+      - key: FILESYSTEM_DISK
         value: public
-
-databases:
-  - name: sistema-ventas-db
-    databaseName: ventas
-    user: ventas
+    healthCheckPath: /
+    autoDeploy: true
