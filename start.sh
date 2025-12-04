@@ -1,15 +1,23 @@
 #!/bin/bash
-# start.sh
 
-echo "Verificando si hay assets construidos..."
-if [ -d /tmp/railway-build-assets ]; then
-    echo "Copiando assets construidos a public/build..."
-    cp -r /tmp/railway-build-assets public/build
-    echo "✓ Assets copiados"
-else
-    echo "✗ No hay assets construidos. Construyendo..."
-    npm install && npm run build
+echo "=== INICIANDO LARAVEL ==="
+
+# Verificar si PHP está instalado
+php --version
+
+# Verificar assets
+if [ ! -f /app/public/build/manifest.json ]; then
+    echo "Construyendo assets..."
+    npm run build
 fi
 
-echo "Iniciando aplicación Laravel..."
-php artisan serve --host=0.0.0.0 --port=$PORT
+# Configurar Laravel
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan storage:link --force
+
+echo "=== INICIANDO SERVIDOR EN PUERTO $PORT ==="
+
+# Iniciar servidor PHP
+exec php -S 0.0.0.0:$PORT -t public
