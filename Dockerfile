@@ -40,17 +40,17 @@ RUN mkdir -p /home/laravel/.composer && \
 # Establecer directorio de trabajo
 WORKDIR /var/www
 
-# Copiar archivos (incluyendo public/build compilado)
+# Copiar archivos de la aplicación (incluyendo public/build ya compilado)
 COPY --chown=laravel:laravel . /var/www
 
 # Instalar dependencias de PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Permisos
-RUN chown -R www-data:www-data /var/www && \
-    chmod -R 775 /var/www/storage && \
-    chmod -R 775 /var/www/bootstrap/cache && \
-    chmod -R 755 /var/www/public
+# Configurar permisos
+RUN chown -R www-data:www-data /var/www
+RUN chmod -R 775 /var/www/storage
+RUN chmod -R 775 /var/www/bootstrap/cache
+RUN chmod -R 755 /var/www/public
 
 # Configurar Nginx
 COPY docker/nginx.conf /etc/nginx/sites-available/default
