@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-# Instalar dependencias del sistema incluyendo Node.js
+# Instalar dependencias del sistema (SIN Node.js)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,14 +12,12 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     nginx \
-    supervisor \
-    nodejs \
-    npm
+    supervisor
 
 # Limpiar caché
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Instalar extensiones de PHP necesarias
+# Instalar extensiones de PHP
 RUN docker-php-ext-configure intl
 RUN docker-php-ext-install \
     pdo_mysql \
@@ -34,7 +32,7 @@ RUN docker-php-ext-install \
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Crear usuario para la aplicación
+# Crear usuario
 RUN useradd -G www-data,root -u 1000 -d /home/laravel laravel
 RUN mkdir -p /home/laravel/.composer && \
     chown -R laravel:laravel /home/laravel
@@ -42,16 +40,8 @@ RUN mkdir -p /home/laravel/.composer && \
 # Establecer directorio de trabajo
 WORKDIR /var/www
 
-# Copiar archivos de la aplicación
+# Copiar archivos de la aplicación (incluyendo public/build ya compilado)
 COPY --chown=laravel:laravel . /var/www
-
-# Instalar dependencias de Node y compilar assets
-RUN echo "=== Instalando dependencias de Node ===" && \
-    npm ci && \
-    echo "=== Compilando assets con Vite ===" && \
-    npm run build && \
-    echo "=== Build completado ===" && \
-    ls -la public/build/
 
 # Instalar dependencias de PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction
