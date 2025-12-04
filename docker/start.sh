@@ -3,40 +3,54 @@
 set -e
 
 echo "============================================"
-echo "Iniciando aplicación Laravel..."
+echo "Iniciando aplicación Laravel en Render..."
 echo "============================================"
 
-# Mostrar variables de entorno (sin mostrar contraseñas)
+# Mostrar información de entorno
 echo "APP_ENV: $APP_ENV"
-echo "DATABASE_URL configurado: ${DATABASE_URL:0:20}..."
+echo "APP_URL: ${APP_URL:-No configurado}"
+echo "VITE_APP_URL: ${VITE_APP_URL:-No configurado}"
 
-# Esperar a que la base de datos esté lista
-echo "Esperando a que la base de datos esté lista..."
-sleep 10
+# Verificar si los assets fueron construidos
+echo "Verificando assets de Vite..."
+if [ ! -f /var/www/public/build/manifest.json ]; then
+    echo "ERROR: manifest.json no encontrado!"
+    echo "Contenido de /var/www/public/build/:"
+    ls -la /var/www/public/build/ 2>/dev/null || echo "Directorio no existe"
+    
+    echo "Intentando construir assets..."
+    cd /var/www && npm run build 2>&1 | tail -20
+    
+    # Verificar nuevamente
+    if [ ! -f /var/www/public/build/manifest.json ]; then
+        echo "FALLO CRÍTICO: No se pudieron construir los assets"
+        exit 1
+    fi
+else
+    echo "✓ Assets encontrados en /var/www/public/build/"
+    echo "Manifest:"
+    head -5 /var/www/public/build/manifest.json
+fi
 
-# Limpiar caché antes de cualquier cosa
-echo "Limpiando caché..."
-php artisan config:clear || true
-php artisan cache:clear || true
-php artisan view:clear || true
-php artisan route:clear || true
+# Limpiar cachés
+echo "Limpiando cachés de Laravel..."
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+php artisan route:clear
 
-# Ejecutar migraciones
-echo "Ejecutando migraciones..."
-php artisan migrate --force || echo "ERROR: Migraciones fallaron"
-
-# Crear storage link
-echo "Creando storage link..."
-php artisan storage:link --force || true
-
-# Optimizar después de migrar
-echo "Optimizando aplicación..."
+# Cache para producción
+echo "Optimizando para producción..."
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+# Storage link
+echo "Creando storage link..."
+php artisan storage:link --force
+
 echo "============================================"
-echo "Configuración completada. Iniciando servicios..."
+echo "Iniciando servicios..."
 echo "============================================"
 
 # Iniciar supervisor

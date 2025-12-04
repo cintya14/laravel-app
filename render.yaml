@@ -16,7 +16,7 @@ services:
         value: database
       - key: QUEUE_CONNECTION
         value: database
-      - key: FILESYSTEM_DISK
+      - key: FILESYSTEaM_DISK
         value: public
 
 databases:

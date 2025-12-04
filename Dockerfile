@@ -1,7 +1,9 @@
 FROM php:8.2-fpm
 
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y \
+# === 1. Instalar Node.js ANTES que cualquier cosa ===
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get update && apt-get install -y \
+    nodejs \
     git \
     curl \
     libpng-dev \
@@ -15,6 +17,9 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Verificar Node.js instalado
+RUN node --version && npm --version
 
 # Extensiones PHP
 RUN docker-php-ext-configure intl
@@ -31,33 +36,41 @@ RUN docker-php-ext-install \
 # Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Crear usuario Laravel
-RUN useradd -G www-data,root -u 1000 -d /home/laravel laravel
-RUN mkdir -p /home/laravel/.composer && chown -R laravel:laravel /home/laravel
-
 # Directorio de trabajo
 WORKDIR /var/www
 
-# Copiar aplicación
-COPY --chown=laravel:laravel . /var/www
+# === 2. Copiar solo package.json PRIMERO para caché eficiente ===
+COPY package*.json ./
 
-# Instalar dependencias PHP
+# === 3. Instalar dependencias Node.js (esto NO está en caché) ===
+RUN npm ci --only=production
+
+# === 4. Copiar el resto de la aplicación ===
+COPY . .
+
+# === 5. Construir assets CON variables de entorno ===
+# Configurar variables para el build
+ARG VITE_APP_URL=${VITE_APP_URL:-https://localhost}
+ENV VITE_APP_URL=${VITE_APP_URL}
+
+RUN echo "Building assets with VITE_APP_URL: $VITE_APP_URL" && \
+    npm run build
+
+# === 6. Instalar dependencias PHP ===
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Permisos
-RUN chown -R www-data:www-data /var/www
-RUN chmod -R 775 /var/www/storage
-RUN chmod -R 775 /var/www/bootstrap/cache
-RUN chmod -R 755 /var/www/public
+RUN chown -R www-data:www-data /var/www \
+    && chmod -R 775 /var/www/storage \
+    && chmod -R 775 /var/www/bootstrap/cache \
+    && chmod -R 755 /var/www/public
 
-# Configuración de Nginx y Supervisor
+# Configuración
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Puerto expuesto
 EXPOSE 8080
 
-# Script de inicio
 COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
 

@@ -1,0 +1,17 @@
+node_modules/
+.git/
+.github/
+docker-compose.*
+.env
+.env.*
+!.env.example
+storage/logs/*
+!storage/logs/.gitkeep
+vendor/
+*.log
+*.sqlite
+*.sqlite-journal
+.DS_Store
+Thumbs.db
+/public/build
+/public/hot
