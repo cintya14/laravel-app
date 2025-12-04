@@ -15,26 +15,26 @@ class CartePage extends Component
     public $grand_total;
 
     public function mount(){
-        $this->cart_items = gestionarCarrito::getCartItemsFromCookie();
-        $this->grand_total = gestionarCarrito::calculateGrandTotal($this->cart_items);
+        $this->cart_items = GestionarCarrito::getCartItemsFromCookie();
+        $this->grand_total = GestionarCarrito::calculateGrandTotal($this->cart_items);
     }
 
     public function removeItem($producto_id){
-        $this->cart_items = gestionarCarrito::removeCartItem($producto_id);
-        $this->grand_total = gestionarCarrito::calculateGrandTotal($this->cart_items);
+        $this->cart_items = GestionarCarrito::removeCartItem($producto_id);
+        $this->grand_total = GestionarCarrito::calculateGrandTotal($this->cart_items);
         $this->dispatch('update-cart-count', total_count: count($this->cart_items))->to(Navbar::class);
     }
 
     public function incrementar($producto_id){
-        $this->cart_items = gestionarCarrito::incremenQuantityToCartItem($producto_id);
-        $this->grand_total = gestionarCarrito::calculateGrandTotal($this->cart_items);
+        $this->cart_items = GestionarCarrito::incremenQuantityToCartItem($producto_id);
+        $this->grand_total = GestionarCarrito::calculateGrandTotal($this->cart_items);
         
 
     }
 
     public function decrementar($producto_id){
-        $this->cart_items = gestionarCarrito::decrementQuantityToCartItem($producto_id);
-        $this->grand_total = gestionarCarrito::calculateGrandTotal($this->cart_items);
+        $this->cart_items = GestionarCarrito::decrementQuantityToCartItem($producto_id);
+        $this->grand_total = GestionarCarrito::calculateGrandTotal($this->cart_items);
         
 
     }

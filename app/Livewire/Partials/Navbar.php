@@ -12,7 +12,7 @@ class Navbar extends Component
     public $total_count = 0;
 
     public function mount(){
-    $this->total_count = count(gestionarCarrito::getCartItemsFromCookie());
+    $this->total_count = count(GestionarCarrito::getCartItemsFromCookie());
 }
 
 #[On('update-cart-count')]
