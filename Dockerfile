@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-# Extensiones y herramientas necesarias
+# Instalar dependencias del sistema (SIN Node.js)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -10,48 +10,59 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libicu-dev \
     zip \
-    unzip
+    unzip \
+    nginx \
+    supervisor
 
-# Node.js 18 para Vite
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get install -y nodejs
+# Limpiar caché
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Extensiones PHP
-RUN docker-php-ext-configure intl \
-    && docker-php-ext-install \
-        pdo_mysql \
-        mbstring \
-        exif \
-        pcntl \
-        bcmath \
-        gd \
-        intl \
-        zip
+# Instalar extensiones de PHP
+RUN docker-php-ext-configure intl
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    intl \
+    zip
 
-# Composer
-COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+# Instalar Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Directorio de trabajo
-WORKDIR /app
+# Crear usuario
+RUN useradd -G www-data,root -u 1000 -d /home/laravel laravel
+RUN mkdir -p /home/laravel/.composer && \
+    chown -R laravel:laravel /home/laravel
 
-# Copiar proyecto
-COPY . .
+# Establecer directorio de trabajo
+WORKDIR /var/www
 
-# Dependencias PHP
+# Copiar archivos (incluyendo public/build compilado)
+COPY --chown=laravel:laravel . /var/www
+
+# Instalar dependencias de PHP
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Construcción Vite
-RUN npm ci && npm run build
+# Permisos
+RUN chown -R www-data:www-data /var/www && \
+    chmod -R 775 /var/www/storage && \
+    chmod -R 775 /var/www/bootstrap/cache && \
+    chmod -R 755 /var/www/public
 
-# Permisos (Render sí permite estas rutas)
-RUN chmod -R 775 storage \
-    && chmod -R 775 bootstrap/cache \
-    && chmod -R 755 public
+# Configurar Nginx
+COPY docker/nginx.conf /etc/nginx/sites-available/default
 
-# Puerto asignado por Render
-ENV PORT=10000
+# Configurar Supervisor
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-EXPOSE 10000
+# Exponer puerto
+EXPOSE 8080
 
-# Comando de ejecución
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=10000"]
+# Script de inicio
+COPY docker/start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
