@@ -1,13 +1,8 @@
 services:
   - type: web
     name: sistema-ventas-online
-    runtime: php
-    buildCommand: |
-      composer install --no-dev --optimize-autoloader
-      php artisan key:generate --force
-      php artisan storage:link
-      php artisan optimize:clear
-    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    env: docker
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: APP_ENV
         value: production
@@ -15,3 +10,16 @@ services:
         value: false
       - key: LOG_CHANNEL
         value: stderr
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: FILESYSTEM_DISK
+        value: public
+
+databases:
+  - name: sistema-ventas-db
+    databaseName: ventas
+    user: ventas
