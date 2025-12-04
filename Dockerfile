@@ -1,77 +1,61 @@
 FROM php:8.2-fpm
 
-# === 1. Instalar Node.js ANTES que cualquier cosa ===
+# 1. Instalar dependencias del sistema + Node.js 18.x
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get update && apt-get install -y \
     nodejs \
-    git \
-    curl \
+    nginx \
+    supervisor \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
-    libicu-dev \
     zip \
     unzip \
-    nginx \
-    supervisor \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    git \
+    curl \
+    && apt-get clean
 
-# Verificar Node.js instalado
-RUN node --version && npm --version
+# 2. Instalar extensiones PHP necesarias
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# Extensiones PHP
-RUN docker-php-ext-configure intl
-RUN docker-php-ext-install \
-    pdo_mysql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    gd \
-    intl \
-    zip
-
-# Composer
+# 3. Instalar Composer desde la imagen oficial
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Directorio de trabajo
+# 4. Establecer directorio de trabajo
 WORKDIR /var/www
 
-# === 2. Copiar solo package.json PRIMERO para caché eficiente ===
+# 5. Copiar archivos de dependencias primero para cachear capas
 COPY package*.json ./
+COPY composer.json composer.lock ./
 
-# === 3. Instalar dependencias Node.js (esto NO está en caché) ===
+# 6. Instalar dependencias de Node.js
 RUN npm ci --only=production
 
-# === 4. Copiar el resto de la aplicación ===
-COPY . .
-
-# === 5. Construir assets CON variables de entorno ===
-# Configurar variables para el build
-ARG VITE_APP_URL=${VITE_APP_URL:-https://localhost}
-ENV VITE_APP_URL=${VITE_APP_URL}
-
-RUN echo "Building assets with VITE_APP_URL: $VITE_APP_URL" && \
-    npm run build
-
-# === 6. Instalar dependencias PHP ===
+# 7. Instalar dependencias de PHP (sin desarrollo)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Permisos
+# 8. Copiar el resto de la aplicación
+COPY . .
+
+# 9. Construir los assets de Vite para producción
+RUN npm run build
+
+# 10. Establecer permisos correctos
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 775 /var/www/storage \
-    && chmod -R 775 /var/www/bootstrap/cache \
-    && chmod -R 755 /var/www/public
+    && chmod -R 775 /var/www/bootstrap/cache
 
-# Configuración
+# 11. Copiar configuración de Nginx y Supervisor
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# 12. Exponer el puerto 8080 (Render usa este puerto por defecto para aplicaciones web)
 EXPOSE 8080
 
+# 13. Copiar script de inicio y dar permisos de ejecución
 COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
 
+# 14. Comando de inicio
 CMD ["/start.sh"]
